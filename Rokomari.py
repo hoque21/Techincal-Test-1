@@ -1,9 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
 
-# Function to scrape data from a given URL
+
 def scrape_rokomari(url):
-    # Send a GET request to the webpage
+    
     response = requests.get(url)
     
     # Check if the request was successful (status code 200)
