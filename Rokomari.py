@@ -1,32 +1,47 @@
 import requests
+import pandas as pd
 from bs4 import BeautifulSoup
 
+rokomari_url = 'https://www.rokomari.com/book/category/56/literature'
 
-def scrape_rokomari(url):
+
+def rokomari_products(category_url):
     
-    response = requests.get(url)
+    response = requests.get(category_url)
     
-    # Check if the request was successful (status code 200)
-    if response.status_code == 200:
-        # Parse the HTML content of the page
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Extract the product names and prices (this can change depending on the site structure)
-        products = soup.find_all('div', class_='product-item')
-        
-        if products:
-            for product in products:
-                # Example of extracting title and price (selectors may vary)
-                title = product.find('h1', class_='book-title').text.strip()
-               
-                print(f"Product: {title}")
-        else:
-            # Handle if no products are found
-            print("No products found on the page.")
-    else:
-        print("Failed to retrieve the webpage")
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    
+    
+    #products details
+    products = []
+    product_cards = soup.find_all('div', class_='book-list-wrapper')
 
-# Example usage
-url = 'https://www.rokomari.com/book/56283/friends-language-grammar-reading-comprehension-writing-composition'
+    
+    for card in product_cards:
+        title_tag = card.find('h1', class_='book-title')
+        title = title_tag.get_text(strip=True) if title_tag else 'N/A'
+        
+        rating_tag = card.find('span', class_='book-rating') 
+        rating = rating_tag.get_text(strip=True) if rating_tag else 0
 
-scrape_rokomari(url)
+      
+        price_tag = card.find('p', class_='book-price')
+        price = price_tag.get_text(strip=True) if price_tag else 0
+        
+        
+        products.append({
+            'Title': title,
+            'Rating':rating,
+            'Price': price
+        })
+    
+    return products
+
+products = rokomari_products(rokomari_url)
+
+
+for product in products:
+    print(product)
+df=pd.DataFrame(products)
+df.to_csv('rokomari.csv',index =False)
