@@ -1,47 +1,70 @@
-import requests
+from selenium import webdriver
+import os
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+import time
 import pandas as pd
-from bs4 import BeautifulSoup
-
-rokomari_url = 'https://www.rokomari.com/book/category/56/literature'
 
 
-def rokomari_products(category_url):
+driver_path = os.path.join(os.getcwd(), 'chromedriver-win64')
+exe_path = os.path.join(driver_path, 'chromedriver.exe')
+
+driver = webdriver.Chrome()
+driver.maximize_window()
+
+
+page_url = 'https://www.rokomari.com/book/publisher/586/islamic-foundation'
+
+def fetch_products_from_page(url):
+    driver.get(url)
+    time.sleep(5)  
+
+    products = driver.find_elements(By.CSS_SELECTOR, 'div.book-text-area')  
+ 
+    product_data = []
+    for product in products:
+        name_elements = product.find_elements(By.CSS_SELECTOR, 'h4.book-title')  
+        author_elements = product.find_elements(By.CSS_SELECTOR, 'p.book-author')  
+
+        name = get_element_text(name_elements[0] if name_elements else None)
+        author = get_element_text(author_elements[0] if author_elements else None)
+
+        product_data.append({'Name': name, 'Author Name': author})
+
+    return product_data
+
+def get_next_page_url():
+    try:
+        next_button = driver.find_element(By.CSS_SELECTOR, 'body > div.browse-page > div > div > div > section.browse__content > div.pagination > a:nth-child(10)')  # Adjust selector as needed
+        return next_button.get_attribute('href')
+    except Exception:
+        return None
+
+def get_element_text(element, default=''):
+    """Helper function to get the text of an element or return a default value."""
+    return element.text if element else default
+
+
+
+all_products = []
+
+
+while page_url:
+    print(f"Fetching products from: {page_url}")
+    products = fetch_products_from_page(page_url)
+    all_products.extend(products)
     
-    response = requests.get(category_url)
+    next_page_url = get_next_page_url()
     
-    soup = BeautifulSoup(response.content, 'html.parser')
-    
-    
-    
-    #products details
-    products = []
-    product_cards = soup.find_all('div', class_='book-list-wrapper')
+    if next_page_url:
+        page_url = next_page_url
+    else:
+        page_url = None
+       
 
-    
-    for card in product_cards:
-        title_tag = card.find('h1', class_='book-title')
-        title = title_tag.get_text(strip=True) if title_tag else 'N/A'
-        
-        rating_tag = card.find('span', class_='book-rating') 
-        rating = rating_tag.get_text(strip=True) if rating_tag else 0
+df = pd.DataFrame(all_products)
+df.to_csv('Rokomari.csv', index=False)
+print("Data saved to Rokomari.csv")
 
-      
-        price_tag = card.find('p', class_='book-price')
-        price = price_tag.get_text(strip=True) if price_tag else 0
-        
-        
-        products.append({
-            'Title': title,
-            'Rating':rating,
-            'Price': price
-        })
-    
-    return products
-
-products = rokomari_products(rokomari_url)
-
-
-for product in products:
-    print(product)
-df=pd.DataFrame(products)
-df.to_csv('rokomari.csv',index =False)
+driver.quit()
